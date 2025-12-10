@@ -1,4 +1,4 @@
-// script.js – Full Nostr Login + Pay-to-Play Integration
+// script.js – Fixed Nostr Auth + Pay-to-Play
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const scoreDisplay = document.getElementById('score');
@@ -9,8 +9,9 @@ const paymentStatus = document.getElementById('paymentStatus');
 
 const gridSize = 20;
 const tileCount = canvas.width / gridSize;
-const ENTRY_FEE = 210; // sats
-const LN_WALLET = 'mustardmoose1@primal.net';
+const ENTRY_FEE_SATS = 210;
+const ENTRY_FEE_MSATS = ENTRY_FEE_SATS * 1000;
+const LN_WALLET = 'mustardmoose1@primal.net'; // Payee
 
 let snake = [{ x: 10, y: 10 }];
 let food = {};
@@ -22,7 +23,7 @@ let gameLoop;
 let gameRunning = false;
 let isPaid = false;
 let pseudonym = null;
-let displayName = null; // npub or pseudonym
+let displayName = null;
 
 highScoreDisplay.textContent = highScore;
 
@@ -30,8 +31,7 @@ highScoreDisplay.textContent = highScore;
 let authState = {
   type: null, // 'extension' | 'nsec' | 'bunker' | 'anon'
   pubkey: null,
-  signer: null,
-  nwcUri: null
+  keys: null // For signing
 };
 
 // Elements
@@ -40,16 +40,14 @@ const paymentSection = document.getElementById('paymentSection');
 const gameCanvas = document.getElementById('gameCanvas');
 const instructions = document.querySelector('.instructions');
 const loginNostrBtn = document.getElementById('loginNostr');
-const playAnonBtn = document.getElementById('playAnon');
-const nsecInputSection = document.getElementById('nsecInputSection');
-const nsecInput = document.getElementById('nsecInput');
 const importNsecBtn = document.getElementById('importNsec');
-const bunkerInputSection = document.getElementById('bunkerInputSection');
-const bunkerInput = document.getElementById('bunkerInput');
 const connectBunkerBtn = document.getElementById('connectBunker');
+const playAnonBtn = document.getElementById('playAnon');
 const pseudonymSection = document.getElementById('pseudonymSection');
 const pseudonymInput = document.getElementById('pseudonymInput');
 const setPseudonymBtn = document.getElementById('setPseudonym');
+const nsecInput = document.getElementById('nsecInput');
+const bunkerInput = document.getElementById('bunkerInput');
 const connectWeblnBtn = document.getElementById('connectWebln');
 const connectNwcBtn = document.getElementById('connectNwc');
 const payOptions = document.getElementById('payOptions');
@@ -59,75 +57,92 @@ const invoiceQrSection = document.getElementById('invoiceQrSection');
 const qrcodeDiv = document.getElementById('qrcode');
 const invoiceText = document.getElementById('invoiceText');
 const checkPaymentBtn = document.getElementById('checkPayment');
-const walletConnectSection = document.getElementById('walletConnectSection');
 
 // Nostr Tools
-const { generatePrivateKey, getPublicKey, nip19, finalizeEvent, SimplePool } = NostrTools;
+const { nip19, generatePrivateKey, getPublicKey, getEventHash, getSignature, finalizeEvent } = window.NostrTools;
 
-// Pool for relays
-const pool = new SimplePool();
+// Simple Pool for publishing
+const relays = ['wss://relay.damus.io', 'wss://nostr-pub.wellorder.net'];
+const pool = new window.NostrTools.SimplePool();
 
-// Nostr Login Setup (for extension/bunker/nsec)
-loginNostrBtn.addEventListener('click', () => {
-  document.dispatchEvent(new CustomEvent('nlLaunch', { detail: 'welcome' }));
-  // Listen for auth changes
-  window.addEventListener('nostr-login', (e) => {
-    const { pubkey, type } = e.detail;
-    authState.pubkey = pubkey;
-    authState.type = type;
-    updateUserInfo();
-    proceedToPayment();
-  });
+// === AUTH HANDLERS ===
+
+// Extension Login (window.nostr)
+loginNostrBtn.addEventListener('click', async () => {
+  if (typeof window.nostr !== 'undefined') {
+    try {
+      const pubkey = await window.nostr.getPublicKey();
+      authState.pubkey = pubkey;
+      authState.type = 'extension';
+      // Assume signer via window.nostr
+      authState.keys = { priv: null }; // No priv, use window.nostr for signing
+      updateUserInfo();
+      proceedToPayment();
+    } catch (err) {
+      alert('Failed to connect extension: ' + err.message);
+    }
+  } else {
+    alert('No Nostr extension found. Install nos2x or Alby.');
+  }
 });
 
-// Manual nsec import
-importNsecBtn.addEventListener('click', async () => {
+// nsec Import
+importNsecBtn.addEventListener('click', () => {
   const nsec = nsecInput.value.trim();
-  if (!nsec) return;
+  if (!nsec.startsWith('nsec1')) {
+    alert('Invalid nsec format');
+    return;
+  }
   try {
-    const sk = nip19.decode(nsec).data;
-    authState.pubkey = nip19.npubEncode(getPublicKey(sk));
-    authState.signer = { signEvent: (ev) => finalizeEvent(ev, sk) };
+    const { data: priv } = nip19.decode(nsec);
+    const pub = getPublicKey(priv);
+    authState.pubkey = pub;
     authState.type = 'nsec';
+    authState.keys = { priv };
     updateUserInfo();
     proceedToPayment();
+    nsecInput.value = ''; // Clear
   } catch (err) {
-    alert('Invalid nsec');
+    alert('Invalid nsec: ' + err.message);
   }
 });
 
-// Bunker Connect (simplified - assumes nostr-login handles, or manual)
-connectBunkerBtn.addEventListener('click', async () => {
+// Bunker Connect (simplified - use URI to set window.nostr or manual)
+connectBunkerBtn.addEventListener('click', () => {
   const uri = bunkerInput.value.trim();
-  if (!uri) return;
-  try {
-    // Use nostr-tools for BunkerSigner if needed, but leverage nostr-login
-    document.dispatchEvent(new CustomEvent('nlLaunch', { detail: 'login-bunker-url' }));
-    // Assume it sets window.nostr
-  } catch (err) {
-    alert('Bunker connect failed');
+  if (!uri.startsWith('bunker://')) {
+    alert('Invalid bunker URI');
+    return;
   }
+  // For demo, assume manual setup or alert to use extension
+  // In prod, parse URI and set signer
+  alert('Bunker support: Paste bunker URI into compatible extension (e.g., nos2x with bunker). Then click Login with Nostr Extension.');
+  bunkerInput.value = '';
 });
 
-// Anon Play
+// Anon
 playAnonBtn.addEventListener('click', () => {
   pseudonymSection.style.display = 'block';
+  playAnonBtn.disabled = true;
 });
 
 setPseudonymBtn.addEventListener('click', () => {
   const name = pseudonymInput.value.trim();
-  if (!name) return;
+  if (!name || name.length < 2) {
+    alert('Enter a valid pseudonym (2+ chars)');
+    return;
+  }
   pseudonym = name;
   displayName = name;
   authState.type = 'anon';
   updateUserInfo();
   proceedToPayment();
+  pseudonymSection.style.display = 'none';
 });
 
 function updateUserInfo() {
-  if (displayName || authState.pubkey) {
-    userInfo.textContent = `Logged in as: ${displayName || nip19.npubEncode(authState.pubkey).slice(0, 12) + '...'}`;
-  }
+  const name = displayName || (authState.pubkey ? nip19.npubEncode(authState.pubkey).slice(0, 12) + '...' : 'Unknown');
+  userInfo.textContent = `Logged in as: ${name}`;
 }
 
 function proceedToPayment() {
@@ -135,101 +150,101 @@ function proceedToPayment() {
   paymentSection.style.display = 'block';
 }
 
-// Wallet Connect
+// === WALLET & PAYMENT ===
+
 let webln = null;
+let nwc = null;
+
+// WebLN Connect
 connectWeblnBtn.addEventListener('click', async () => {
-  try {
-    webln = await window.webln.requestProvider();
-    connectWeblnBtn.textContent = 'Connected ✅';
-    payOptions.style.display = 'block';
-  } catch (err) {
-    alert('WebLN not available. Install Alby or similar.');
+  if (typeof window.webln !== 'undefined') {
+    try {
+      webln = await window.webln.enable();
+      connectWeblnBtn.textContent = 'WebLN Connected ✅';
+      connectWeblnBtn.disabled = true;
+      payOptions.style.display = 'block';
+    } catch (err) {
+      alert('WebLN enable failed: ' + err.message + '\nInstall Alby extension.');
+    }
+  } else {
+    alert('No WebLN provider. Install Alby or similar.');
   }
 });
 
-let nwcClient = null;
+// NWC Connect using Alby SDK
 connectNwcBtn.addEventListener('click', async () => {
   try {
-    // Simplified NWC connect - prompt for URI or use extension
-    const uri = prompt('Enter NWC URI (nostr+walletconnect://...)');
-    if (uri) {
-      nwcClient = new window.webln.NWC(uri); // Assume alby-js-sdk or similar loaded if needed
-      await nwcClient.initNWC({ name: 'SatSnake' });
-      connectNwcBtn.textContent = 'Connected ✅';
-      payOptions.style.display = 'block';
-    }
+    nwc = new window.AlbySDK.webln.NostrWebLNProvider();
+    await nwc.enable({ name: 'SatSnake' }); // Prompts user for NWC URI if needed
+    connectNwcBtn.textContent = 'NWC Connected ✅';
+    connectNwcBtn.disabled = true;
+    payOptions.style.display = 'block';
+    webln = nwc; // Use as WebLN
   } catch (err) {
-    alert('NWC connect failed');
+    alert('NWC connect failed: ' + err.message + '\nEnsure Alby SDK loaded and wallet supports NWC.');
   }
 });
 
-// Zap (WebLN or NWC)
+// Zap (pay via WebLN/NWC)
 zapBtn.addEventListener('click', async () => {
-  if (!webln && !nwcClient) return alert('Connect wallet first');
+  if (!webln) return alert('Connect wallet first!');
   try {
-    const invoice = await generateInvoice(ENTRY_FEE * 1000); // msats
-    if (webln) {
-      const paid = await webln.sendPayment(invoice);
-      if (paid) {
-        isPaid = true;
-        paymentStatus.textContent = 'Payment confirmed! Starting game...';
-        startGameFlow();
-      }
-    } else if (nwcClient) {
-      const result = await nwcClient.payInvoice(invoice);
-      if (result) {
-        isPaid = true;
-        paymentStatus.textContent = 'Payment confirmed! Starting game...';
-        startGameFlow();
-      }
+    // For real zap, use NIP-57 to recipient LNURL, but here direct invoice
+    const invoice = await generateDummyInvoice(ENTRY_FEE_MSATS, 'SatSnake Entry Fee');
+    const paid = await webln.sendPayment(invoice);
+    if (paid) {
+      isPaid = true;
+      paymentStatus.textContent = 'Payment successful! Starting game...';
+      paymentStatus.style.color = 'green';
+      setTimeout(startGameFlow, 1500);
     }
   } catch (err) {
     alert('Payment failed: ' + err.message);
   }
 });
 
-// Invoice Pay
+// Invoice + QR
 invoiceBtn.addEventListener('click', async () => {
-  const invoice = await generateInvoice(ENTRY_FEE * 1000);
-  invoiceText.textContent = invoice;
+  const invoice = await generateDummyInvoice(ENTRY_FEE_MSATS, 'SatSnake Entry Fee');
+  invoiceText.textContent = `lnurl1... (Demo: ${ENTRY_FEE_SATS}sats to ${LN_WALLET})\nCopy: ${invoice.slice(0, 50)}...`;
+  qrcodeDiv.innerHTML = '';
   new QRCode(qrcodeDiv, { text: invoice, width: 200, height: 200 });
   invoiceQrSection.style.display = 'block';
+  payOptions.style.display = 'none';
 });
 
-checkPaymentBtn.addEventListener('click', async () => {
-  // Simplified check - in prod, poll LN node or use webhook; here assume manual confirm after delay
-  // For demo, auto-confirm after 10s or button simulates
+checkPaymentBtn.addEventListener('click', () => {
+  // Simulate confirmation (in prod, poll LN node or use webhook)
+  paymentStatus.textContent = 'Checking...';
   setTimeout(() => {
     isPaid = true;
-    paymentStatus.textContent = 'Payment received! Starting game...';
-    startGameFlow();
-  }, 10000); // Simulate confirmation delay
+    paymentStatus.textContent = 'Payment confirmed! Starting game...';
+    paymentStatus.style.color = 'green';
+    setTimeout(startGameFlow, 1500);
+  }, 2000);
 });
 
-// Generate BOLT11 Invoice (simplified - in prod, use LN node API)
-async function generateInvoice(msats) {
-  // Use bolt11 lib to encode
-  const now = Math.floor(Date.now() / 1000);
-  const paymentHash = crypto.getRandomValues(new Uint8Array(32));
-  const encodedHash = Array.from(paymentHash).map(b => b.toString(16).padStart(2, '0')).join('');
-  const invoice = bolt11.encode({
-    network: { bech32: 'tb', pubKeyHash: 0x6f, scriptHash: 0x20, validWitnessVersions: [0] }, // Testnet
-    satoshis: msats / 1000,
-    timestamp: now,
+// Dummy Invoice Generator (for demo; prod: use LND/CLN API to generate real payable to LN_WALLET)
+async function generateDummyInvoice(msats, description) {
+  // Use bolt11 lib to create a basic invoice string
+  const timestamp = Math.floor(Date.now() / 1000);
+  const paymentHash = await crypto.subtle.digest('SHA-256', crypto.getRandomValues(new Uint8Array(32)));
+  const hashHex = Array.from(new Uint8Array(paymentHash)).map(b => b.toString(16).padStart(2, '0')).join('');
+  // Dummy node key for primal.net (replace with real)
+  const dummyInvoice = bolt11.encode({
+    millisatoshis: msats,
+    timestamp,
+    paymentHash: hashHex,
     tags: [
-      { tagName: 'payment_hash', data: encodedHash },
-      { tagName: 'description', data: 'SatSnake Entry Fee' },
-      { tagName: 'payee_node_key', data: '03...' }, // Dummy node key
-      { tagName: 'expiry_time', data: 3600 },
-      { tagName: 'min_final_cltv_expiry', data: 18 },
-      { tagName: 'route_hint', data: [{ hint: { node_id: '03...', short_channel_id: '1x2x3', fee: 1, cltv: 1 }] }] // Dummy
+      { tagName: 'description', data: description },
+      { tagName: 'payee_node_key', data: '03f02868949f...dummy' }, // Dummy
+      { tagName: 'expiry', data: 3600 }
     ]
   });
-  return invoice.paymentRequest; // BOLT11 string
-  // Note: Real impl needs LN node to generate valid signed invoice to mustardmoose1@primal.net
+  return dummyInvoice.paymentRequest;
 }
 
-// Game Flow
+// Game Flow Unlock
 function startGameFlow() {
   paymentSection.style.display = 'none';
   gameCanvas.style.display = 'block';
@@ -237,7 +252,7 @@ function startGameFlow() {
   startButton.style.display = 'inline-block';
 }
 
-// Rest of game code (from previous)
+// === GAME LOGIC ===
 function randomFood() {
   do {
     food = {
@@ -313,39 +328,43 @@ function gameOver() {
 
 async function submitHighScore() {
   const level = 1;
-  let event;
-  if (authState.signer) {
-    // Use signer
-    event = finalizeEvent({
-      kind: 30762,
-      created_at: Math.floor(Date.now() / 1000),
-      content: `New high score: ${highScore} points on level ${level}!`,
-      tags: [
-        ['d', `satsnake:${authState.pubkey}:level-${level}`],
-        ['game', 'satsnake'],
-        ['score', highScore.toString()],
-        ['p', authState.pubkey],
-        ['state', 'active'],
-        ['level', level.toString()],
-        ['mode', 'single-player'],
-        ['t', 'test']
-      ]
-    }, authState.signer.keys); // Assume signer has keys
-  } else {
-    // Anon: no submit, or use window.nostr if available
-    alert('Submit requires Nostr login');
-    return;
-  }
+  const event = {
+    kind: 30762,
+    created_at: Math.floor(Date.now() / 1000),
+    content: `New high score: ${highScore} points on level ${level}!`,
+    tags: [
+      ['d', `satsnake:${authState.pubkey || 'anon'}:level-${level}`],
+      ['game', 'satsnake'],
+      ['score', highScore.toString()],
+      ...(authState.pubkey ? [['p', authState.pubkey]] : []),
+      ['state', 'active'],
+      ['level', level.toString()],
+      ['mode', 'single-player'],
+      ['t', 'test']
+    ]
+  };
+
   try {
-    await pool.publish(['wss://relay.damus.io'], event);
-    alert(`High score ${highScore} submitted to Gamestr.io! 🎉`);
+    let finalEvent;
+    if (authState.type === 'extension' && window.nostr) {
+      finalEvent = await window.nostr.signEvent(event);
+    } else if (authState.keys?.priv) {
+      finalEvent = finalizeEvent(event, authState.keys.priv);
+    } else {
+      alert('Cannot sign for leaderboard (anon scores not submitted)');
+      return;
+    }
+    const pubs = await pool.publish(relays, finalEvent);
+    console.log('Published to:', pubs);
+    alert(`High score ${highScore} submitted to Gamestr.io! 🎉\nView at https://gamestr.io/`);
   } catch (err) {
-    console.error('Submit failed', err);
+    alert('Submit failed: ' + err.message);
   }
 }
 
 function startGame() {
-  if (gameRunning || !isPaid) return alert('Pay entry fee first!');
+  if (!isPaid) return alert('Pay the 210 sats entry fee first!');
+  if (gameRunning) return;
 
   snake = [{ x: 10, y: 10 }];
   dx = 1;

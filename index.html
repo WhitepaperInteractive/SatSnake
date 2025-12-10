@@ -6,7 +6,7 @@
   <title>SatSnake - Classic Snake on Bitcoin</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://unpkg.com/nostr-tools@2/lib/nostr.bundle.js"></script>
-  <script src="https://unpkg.com/nostr-login@latest/dist/unpkg.js"></script>
+  <script src="https://unpkg.com/@getalby/sdk@1/dist/index.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://unpkg.com/bolt11@2.1.2/lib/index.umd.min.js"></script>
 </head>
@@ -17,46 +17,46 @@
     <div class="score">High Score: <span id="highScore">0</span></div>
     <div id="authSection">
       <div class="auth-option">
-        <button id="loginNostr">Login with Nostr</button>
+        <button id="loginNostr">Login with Nostr Extension</button>
+      </div>
+      <div class="auth-option">
+        <input id="nsecInput" type="password" placeholder="Enter nsec private key" style="width: 250px; padding: 5px; margin: 5px;" />
+        <button id="importNsec">Import nsec</button>
+      </div>
+      <div class="auth-option">
+        <input id="bunkerInput" type="text" placeholder="Enter bunker:// URI" style="width: 250px; padding: 5px; margin: 5px;" />
+        <button id="connectBunker">Connect Bunker</button>
       </div>
       <div class="auth-option">
         <button id="playAnon">Play Anonymously</button>
       </div>
-      <div id="nsecInputSection" style="display:none;">
-        <input id="nsecInput" type="password" placeholder="Enter nsec private key" />
-        <button id="importNsec">Import</button>
-      </div>
-      <div id="bunkerInputSection" style="display:none;">
-        <input id="bunkerInput" type="text" placeholder="Enter bunker:// URI" />
-        <button id="connectBunker">Connect</button>
-      </div>
       <div id="pseudonymSection" style="display:none;">
         <input id="pseudonymInput" type="text" placeholder="Enter pseudonym for leaderboard" />
-        <button id="setPseudonym">Set</button>
+        <button id="setPseudonym">Set Pseudonym</button>
       </div>
       <span id="userInfo"></span>
     </div>
     <div id="paymentSection" style="display:none;">
-      <p>Entry fee: 210 sats</p>
+      <p>Entry fee: 210 sats to play</p>
       <div id="walletConnectSection">
-        <button id="connectWebln">Connect WebLN</button>
+        <button id="connectWebln">Connect WebLN Wallet</button>
         <button id="connectNwc">Connect NWC</button>
       </div>
       <div id="payOptions" style="display:none;">
         <button id="zapBtn">Zap 210 sats</button>
-        <button id="invoiceBtn">Pay via Invoice</button>
+        <button id="invoiceBtn">Pay via Invoice (QR)</button>
       </div>
       <div id="invoiceQrSection" style="display:none;">
         <div id="qrcode"></div>
         <p id="invoiceText"></p>
-        <button id="checkPayment">Check Payment</button>
+        <button id="checkPayment">Check Payment Status</button>
       </div>
       <p id="paymentStatus"></p>
     </div>
     <canvas id="gameCanvas" width="400" height="400" style="display:none;"></canvas>
     <div class="instructions" style="display:none;">
       ↑ ↓ ← → Arrow keys • Eat red food • Don't crash!<br>
-      Submit high scores to <a href="https://gamestr.io/" target="_blank">Gamestr.io</a> leaderboard!
+      High scores to <a href="https://gamestr.io/" target="_blank">Gamestr.io</a> leaderboard!
     </div>
     <button id="startButton" style="display:none;">Start Game</button>
   </div>

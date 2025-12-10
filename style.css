@@ -114,3 +114,52 @@ button:active {
   display: block;
   margin: 10px 0;
 }
+
+/* Append to style.css if not already there */
+.auth-option {
+  margin: 10px 0;
+  text-align: center;
+}
+
+.auth-option input {
+  width: 200px;
+  padding: 5px;
+  margin: 5px;
+}
+
+#walletConnectSection button {
+  margin: 5px;
+  padding: 10px 15px;
+}
+
+#qrcode {
+  margin: 10px auto;
+  width: 200px;
+  height: 200px;
+}
+
+#invoiceText {
+  word-break: break-all;
+  font-family: monospace;
+  font-size: 0.8rem;
+  margin: 10px 0;
+}
+
+#paymentStatus {
+  color: #ff6b35;
+  font-weight: bold;
+  margin: 10px 0;
+}
+
+#userInfo {
+  font-family: monospace;
+  font-size: 0.9rem;
+  opacity: 0.8;
+  display: block;
+  margin: 10px 0;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
