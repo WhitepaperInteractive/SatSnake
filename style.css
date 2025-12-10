@@ -69,3 +69,48 @@ button:hover {
 button:active {
   transform: scale(0.95);
 }
+
+/* Append to style.css */
+#authSection, #paymentSection {
+  margin: 10px 0;
+  text-align: center;
+}
+
+.auth-option {
+  margin: 10px 0;
+}
+
+#authSection input, #pseudonymSection input {
+  width: 200px;
+  padding: 5px;
+  margin: 5px;
+}
+
+#walletConnectSection button {
+  margin: 5px;
+}
+
+#qrcode {
+  margin: 10px auto;
+  width: 200px;
+  height: 200px;
+}
+
+#invoiceText {
+  word-break: break-all;
+  font-family: monospace;
+  font-size: 0.8rem;
+}
+
+#paymentStatus {
+  color: #ff6b35;
+  font-weight: bold;
+}
+
+#userInfo {
+  font-family: monospace;
+  font-size: 0.9rem;
+  opacity: 0.8;
+  display: block;
+  margin: 10px 0;
+}
