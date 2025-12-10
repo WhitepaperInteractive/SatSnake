@@ -17,17 +17,12 @@ let gameLoop;
 let gameRunning = false;
 
 function randomFood() {
-  food = {
-    x: Math.floor(Math.random() * tileCount),
-    y: Math.floor(Math.random() * tileCount)
-  };
-  
-  // Make sure food doesn't spawn on snake
-  for (let segment of snake) {
-    if (segment.x === food.x && segment.y === food.y) {
-      return randomFood();
-    }
-  }
+  do {
+    food = {
+      x: Math.floor(Math.random() * tileCount),
+      y: Math.floor(Math.random() * tileCount)
+    };
+  } while (snake.some(segment => segment.x === food.x && segment.y === food.y));
 }
 
 function drawGame() {
@@ -40,7 +35,7 @@ function drawGame() {
     return;
   }
 
-  // Check self collision
+  // Check self collision (new head vs current body)
   for (let segment of snake) {
     if (head.x === segment.x && head.y === segment.y) {
       gameOver();
@@ -68,24 +63,40 @@ function drawGame() {
     ctx.fillStyle = index === 0 ? '#0f0' : '#0c0';
     ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
     
-    // Eyes on head
+    // Eyes on head - facing direction of travel
     if (index === 0) {
       ctx.fillStyle = 'black';
       const eyeSize = 4;
-      const offset = 5;
+      
+      const tileX = segment.x * gridSize;
+      const tileY = segment.y * gridSize;
+      
+      let ex1, ey1, ex2, ey2;
+      
       if (dx === 1) { // right
-        ctx.fillRect(segment.x * gridSize + offset, segment.y * gridSize + 4, eyeSize, eyeSize);
-        ctx.fillRect(segment.x * gridSize + offset, segment.y * gridSize + 12, eyeSize, eyeSize);
+        ex1 = tileX + gridSize - 6;
+        ey1 = tileY + 6;
+        ex2 = ex1;
+        ey2 = tileY + 14;
       } else if (dx === -1) { // left
-        ctx.fillRect(segment.x * gridSize + offset, segment.y * gridSize + 4, eyeSize, eyeSize);
-        ctx.fillRect(segment.x * gridSize + offset, segment.y * gridSize + 12, eyeSize, eyeSize);
+        ex1 = tileX + 2;
+        ey1 = tileY + 6;
+        ex2 = ex1;
+        ey2 = tileY + 14;
       } else if (dy === 1) { // down
-        ctx.fillRect(segment.x * gridSize + 4, segment.y * gridSize + offset, eyeSize, eyeSize);
-        ctx.fillRect(segment.x * gridSize + 12, segment.y * gridSize + offset, eyeSize, eyeSize);
+        ex1 = tileX + 6;
+        ey1 = tileY + gridSize - 6;
+        ex2 = tileX + 14;
+        ey2 = ey1;
       } else if (dy === -1) { // up
-        ctx.fillRect(segment.x * gridSize + 4, segment.y * gridSize + offset, eyeSize, eyeSize);
-        ctx.fillRect(segment.x * gridSize + 12, segment.y * gridSize + offset, eyeSize, eyeSize);
+        ex1 = tileX + 6;
+        ey1 = tileY + 2;
+        ex2 = tileX + 14;
+        ey2 = ey1;
       }
+      
+      ctx.fillRect(ex1, ey1, eyeSize, eyeSize);
+      ctx.fillRect(ex2, ey2, eyeSize, eyeSize);
     }
   });
 
@@ -114,7 +125,7 @@ function startGame() {
   if (gameRunning) return;
   
   snake = [{x: 10, y: 10}];
-  dx = 0;
+  dx = 1;  // Start moving right to prevent initial self-collision
   dy = 0;
   score = 0;
   scoreDisplay.textContent = score;
