@@ -26,32 +26,32 @@ function randomFood() {
 }
 
 function drawGame() {
-  // Move snake
   const head = {x: snake[0].x + dx, y: snake[0].y + dy};
 
-  // Check wall collision
+  // Check wall collision BEFORE moving
   if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
     gameOver();
     return;
   }
 
-  // Check self collision (new head vs current body)
-  for (let segment of snake) {
-    if (head.x === segment.x && head.y === segment.y) {
-      gameOver();
-      return;
-    }
-  }
-
+  // Move: add new head
   snake.unshift(head);
 
-  // Check if ate food
+  // Check food
   if (head.x === food.x && head.y === food.y) {
     score += 10;
     scoreDisplay.textContent = score;
     randomFood();
   } else {
     snake.pop();
+  }
+
+  // Check self-collision AFTER move (tail handled correctly)
+  for (let i = 1; i < snake.length; i++) {
+    if (snake[0].x === snake[i].x && snake[0].y === snake[i].y) {
+      gameOver();
+      return;
+    }
   }
 
   // Clear canvas
@@ -125,7 +125,7 @@ function startGame() {
   if (gameRunning) return;
   
   snake = [{x: 10, y: 10}];
-  dx = 1;  // Start moving right to prevent initial self-collision
+  dx = 1;  // Start moving right
   dy = 0;
   score = 0;
   scoreDisplay.textContent = score;
