@@ -1,0 +1,71 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Arial', sans-serif;
+  background: #222;
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  user-select: none;
+}
+
+.game-container {
+  text-align: center;
+  background: #111;
+  padding: 20px;
+  border-radius: 15px;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+h1 {
+  font-size: 3rem;
+  margin-bottom: 10px;
+  color: #0f0;
+  text-shadow: 0 0 10px #0f0;
+}
+
+canvas {
+  border: 4px solid #0f0;
+  background: #000;
+  display: block;
+  margin: 20px auto;
+  image-rendering: pixelated; /* Keeps it retro-looking */
+}
+
+.score {
+  font-size: 1.5rem;
+  margin-bottom: 10px;
+}
+
+.instructions {
+  margin: 15px 0;
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+button {
+  margin-top: 15px;
+  padding: 12px 30px;
+  font-size: 1.2rem;
+  background: #0f0;
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+button:hover {
+  background: #0c0;
+  transform: scale(1.05);
+}
+
+button:active {
+  transform: scale(0.95);
+}
