@@ -151,9 +151,9 @@ const GAMESTR = {
                 const gameMatch = gameTag && gameTag[1].toLowerCase() === "satsnake";
 
                 // Filter for t="test" tag as specified in requirements
-                const hasTestTag = event.tags.some(t => t[0] === "t" && t[1] === "casual");
+                const hasTestTag = event.tags.some(t => t[0] === "t" && t[1] === "test");
 
-                if (gameMatch && hasTestTag) {
+                if (gameMatch && !hasTestTag) {
                     const scoreTag = event.tags.find(t => t[0] === "score");
                     if (scoreTag) {
                         const score = parseInt(scoreTag[1]);
@@ -559,7 +559,8 @@ const GAMESTR = {
         const parsedScores = events
             .filter(e => {
                 const gameTag = e.tags.find(t => t[0] === "game");
-                return gameTag && gameTag[1].toLowerCase() === "satsnake";
+                const isTest = e.tags.some(t => t[0] === "t" && t[1] === "test");
+                return gameTag && gameTag[1].toLowerCase() === "satsnake" && !isTest;
             })
             .map(e => {
                 const scoreTag = e.tags.find(t => t[0] === "score");
