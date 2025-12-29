@@ -74,6 +74,7 @@ function grantAccess() {
 
 function expireSession() {
     sessionStorage.removeItem("p2p_access");
+    sessionStorage.removeItem("free_trial");
 }
 
 function revokeAccess() {
@@ -526,6 +527,13 @@ function wire() {
 
     const btnCreateInvoice = $("btnCreateInvoice");
     if (btnCreateInvoice) btnCreateInvoice.onclick = createInvoice;
+
+    const btnFreeTrial = $("btnFreeTrial");
+    if (btnFreeTrial) btnFreeTrial.onclick = () => {
+        state.selectedLevel = 5; // 100% Hashpower
+        sessionStorage.setItem("free_trial", "true");
+        grantAccess();
+    };
 
     const btnPayNWC = $("btnPayNWC");
     if (btnPayNWC) btnPayNWC.onclick = payNWC;

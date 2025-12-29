@@ -180,12 +180,23 @@ const GAMESTR = {
     },
 
     handleGameOver(score) {
+        const isFreeTrial = sessionStorage.getItem("free_trial") === "true";
         this.currentScore = score;
         console.log("Game Over! Score:", score);
 
         // 1. Expire Payment Token immediately
         if (window.expireSession) {
             window.expireSession();
+        }
+
+        // Handle Submit Button Visibility based on Free Trial
+        const btnSubmit = document.getElementById("btnSubmitScore");
+        if (btnSubmit) {
+            if (isFreeTrial) {
+                btnSubmit.classList.add("hidden");
+            } else {
+                btnSubmit.classList.remove("hidden");
+            }
         }
 
         // 2. Show Popup
